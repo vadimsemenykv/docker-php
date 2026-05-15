@@ -4,7 +4,7 @@
 #--------------------------------------------------------------------------
 #
 
-FROM php:8.5-fpm
+FROM php:8.4-fpm
 
 MAINTAINER Vadym Semeniuk <vadimsemenykv@gmail.com>
 
