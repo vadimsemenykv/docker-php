@@ -4,7 +4,7 @@
 #--------------------------------------------------------------------------
 #
 
-FROM php:7.1-fpm
+FROM php:8.0-fpm
 
 MAINTAINER Vadym Semeniuk <vadimsemenykv@gmail.com>
 
@@ -16,13 +16,6 @@ MAINTAINER Vadym Semeniuk <vadimsemenykv@gmail.com>
 # Installing tools and PHP extentions using "apt", "docker-php", "pecl",
 #
 
-# Fix Debian Buster EOL repos
-RUN sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list \
-  && sed -i 's|http://security.debian.org/debian-security|http://archive.debian.org/debian-security|g' /etc/apt/sources.list \
-  && sed -i '/buster-updates/d' /etc/apt/sources.list
-
-# Install "curl", "libmemcached-dev", "libpq-dev", "libjpeg-dev",
-#         "libpng12-dev", "libfreetype6-dev", "libssl-dev", "libmcrypt-dev",
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     curl \
@@ -33,21 +26,17 @@ RUN apt-get update \
     libpng-dev \
     libfreetype6-dev \
     libssl-dev \
-    libmcrypt-dev \
   && rm -rf /var/lib/apt/lists/*
 
-# Install the PHP mcrypt extention
-RUN docker-php-ext-install mcrypt \
-  # Install the PHP pdo_mysql extention
-  && docker-php-ext-install pdo_mysql \
+# Install the PHP pdo_mysql extention
+RUN docker-php-ext-install pdo_mysql \
   # Install the PHP pdo_pgsql extention
   && docker-php-ext-install pdo_pgsql \
-  # Install the PHP gd library
+  # Install the PHP gd library (flags updated for PHP 7.4+)
   && docker-php-ext-configure gd \
-    --enable-gd-native-ttf \
-    --with-jpeg-dir=/usr/lib \
-    --with-freetype-dir=/usr/include/freetype2 && \
-    docker-php-ext-install gd
+    --with-jpeg \
+    --with-freetype \
+  && docker-php-ext-install gd
 
 #####################################
 # SOAP:
@@ -55,9 +44,8 @@ RUN docker-php-ext-install mcrypt \
 
 ARG INSTALL_SOAP=false
 RUN if [ ${INSTALL_SOAP} = true ]; then \
-    # Install the soap extension
     apt-get update -yqq && \
-    apt-get -y install libxml2-dev php-soap && \
+    apt-get -y install libxml2-dev && \
     docker-php-ext-install soap \
 ;fi
 
@@ -67,21 +55,18 @@ RUN if [ ${INSTALL_SOAP} = true ]; then \
 
 ARG INSTALL_XDEBUG=false
 RUN if [ ${INSTALL_XDEBUG} = true ]; then \
-    # Install the xdebug extension
     pecl install xdebug && \
     docker-php-ext-enable xdebug \
 ;fi
 
-# Copy xdebug configration for remote debugging
 COPY ./configs/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
 
 #####################################
-# PHP REDIS EXTENSION FOR PHP 7
+# PHP REDIS EXTENSION
 #####################################
 
 ARG INSTALL_PHPREDIS=false
 RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
-    # Install Php Redis Extension
     pecl install -o -f redis \
     &&  rm -rf /tmp/pear \
     &&  docker-php-ext-enable redis \
@@ -93,7 +78,6 @@ RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
 
 ARG INSTALL_BCMATH=false
 RUN if [ ${INSTALL_BCMATH} = true ]; then \
-    # Install the bcmath extension
     docker-php-ext-install bcmath \
 ;fi
 
@@ -103,52 +87,8 @@ RUN if [ ${INSTALL_BCMATH} = true ]; then \
 
 ARG INSTALL_MEMCACHED=false
 RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
-    # Install the php memcached extension
-    curl -L -o /tmp/memcached.tar.gz "https://github.com/php-memcached-dev/php-memcached/archive/php7.tar.gz" \
-    && mkdir -p memcached \
-    && tar -C memcached -zxvf /tmp/memcached.tar.gz --strip 1 \
-    && ( \
-        cd memcached \
-        && phpize \
-        && ./configure \
-        && make -j$(nproc) \
-        && make install \
-    ) \
-    && rm -r memcached \
-    && rm /tmp/memcached.tar.gz \
+    pecl install memcached \
     && docker-php-ext-enable memcached \
-;fi
-
-#####################################
-# PHP Aerospike:
-#####################################
-
-ARG INSTALL_AEROSPIKE=false
-ENV INSTALL_AEROSPIKE ${INSTALL_AEROSPIKE}
-
-# Copy aerospike configration for remote debugging
-COPY ./configs/aerospike.ini /usr/local/etc/php/conf.d/aerospike.ini
-
-RUN if [ ${INSTALL_AEROSPIKE} = true ]; then \
-    # Fix dependencies for PHPUnit within aerospike extension
-    apt-get update -yqq && \
-    apt-get -y install sudo wget && \
-
-    # Install the php aerospike extension
-    curl -L -o /tmp/aerospike-client-php.tar.gz "https://github.com/aerospike/aerospike-client-php/archive/3.4.14.tar.gz" \
-    && mkdir -p aerospike-client-php \
-    && tar -C aerospike-client-php -zxvf /tmp/aerospike-client-php.tar.gz --strip 1 \
-    && ( \
-        cd aerospike-client-php/src/aerospike \
-        && phpize \
-        && ./build.sh \
-        && make install \
-    ) \
-    && rm /tmp/aerospike-client-php.tar.gz \
-;fi
-
-RUN if [ ${INSTALL_AEROSPIKE} = false ]; then \
-    rm /usr/local/etc/php/conf.d/aerospike.ini \
 ;fi
 
 #####################################
@@ -160,7 +100,6 @@ RUN if [ ${INSTALL_OPCACHE} = true ]; then \
     docker-php-ext-install opcache \
 ;fi
 
-# Copy opcache configration
 COPY ./configs/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 #####################################
@@ -174,13 +113,11 @@ RUN if [ ${INSTALL_MYSQLI} = true ]; then \
 
 ARG INSTALL_INTL=false
 RUN if [ ${INSTALL_INTL} = true ]; then \
-    # Install intl and requirements
     apt-get update -yqq && \
     apt-get install -y zlib1g-dev libicu-dev g++ && \
     docker-php-ext-configure intl && \
     docker-php-ext-install intl \
 ;fi
-
 
 #
 #--------------------------------------------------------------------------
@@ -190,8 +127,6 @@ RUN if [ ${INSTALL_INTL} = true ]; then \
 
 ADD ./configs/php.ini /usr/local/etc/php/conf.d
 ADD ./configs/php-fpm.pool.conf /usr/local/etc/php-fpm.d/
-
-#RUN rm -r /var/lib/apt/lists/*
 
 RUN usermod -u 1000 www-data
 
