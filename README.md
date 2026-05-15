@@ -1,13 +1,13 @@
 
-# PHP 7.1 Docker Image
+# PHP Docker Image
 
-This repository provides a Docker image with PHP 7.1 configured for development and production environments. The image includes support for various PHP extensions and tools, ensuring compatibility and flexibility for a wide range of applications.
+This repository provides a Docker image with PHP configured for development and production environments. The image includes support for various PHP extensions and tools, ensuring compatibility and flexibility for a wide range of applications.
 
 ---
 
 ## Features
 
-- **Base Image**: Based on `php:7.1-fpm`.
+- **Base Image**: Based on `php:{version}-fpm`.
 - **Included Extensions**: PDO (MySQL, PostgreSQL), GD, mcrypt, bcmath, memcached, redis, xdebug, aerospike, and more.
 - **Configurable Build**: Supports optional extensions via build arguments.
 - **Customizable**: Predefined configuration files for xdebug, opcache, aerospike, and more.
@@ -28,7 +28,7 @@ This repository provides a Docker image with PHP 7.1 configured for development 
 To build the Docker image, run:
 
 ```bash
-docker build -t php-7.1-custom .
+docker build -t php-{version}-custom .
 ```
 
 #### Build Arguments
@@ -50,7 +50,7 @@ Customize the image during the build process using the following optional argume
 Example:
 
 ```bash
-docker build --build-arg INSTALL_XDEBUG=true --build-arg INSTALL_SOAP=true -t php-7.1-custom .
+docker build --build-arg INSTALL_XDEBUG=true --build-arg INSTALL_SOAP=true -t php-{version}-custom .
 ```
 
 ---
@@ -60,7 +60,7 @@ docker build --build-arg INSTALL_XDEBUG=true --build-arg INSTALL_SOAP=true -t ph
 To run the container, use:
 
 ```bash
-docker run -d -p 9000:9000 -v $(pwd):/var/www php-7.1-custom
+docker run -d -p 9000:9000 -v $(pwd):/var/www php-{version}-custom
 ```
 
 ---
